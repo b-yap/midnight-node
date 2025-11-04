@@ -1,5 +1,6 @@
 mod beefy_keys;
 mod error;
+mod relayer;
 
 use clap::Parser;
 pub use error::Error;
@@ -28,5 +29,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 		println!("{e}");
 	};
 
-	Ok(())
+	loop {
+		println!("Starting relay...");
+
+		match relayer::Relayer::new(&cli.node_url.clone()).await {
+			Err(e) => println!("Failed to created relayer: {e}"),
+			Ok(relayer) => relayer.run_relay_by_subscription().await?,
+		}
+	}
 }
