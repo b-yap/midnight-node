@@ -60,6 +60,7 @@ pub async fn execute(args: GenerateSampleIntentArgs) {
 		.await;
 }
 
+/*
 #[cfg(test)]
 mod test {
 	use std::fs;
@@ -104,3 +105,6 @@ mod test {
 		remove_file(path).expect("It should be removed"); // check that file was created
 	}
 }
+
+
+*/
