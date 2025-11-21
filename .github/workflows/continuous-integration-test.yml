@@ -1,8 +1,6 @@
 name: +test
 
-on:
-  pull_request:
-    branches: ["**"]
+on: ["push", "pull_request"]
 
 jobs:
   run:
@@ -49,6 +47,8 @@ jobs:
           sudo apt-get install -y protobuf-compiler libprotobuf-dev
 
       - name: install llcov
+        env:
+          COVERAGE: 1
         run: |
           mkdir test-artifacts
           cargo install cargo-binstall --version 1.6.9
