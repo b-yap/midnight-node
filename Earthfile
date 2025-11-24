@@ -58,6 +58,20 @@ generate-preview-keys:
 generate-preview-genesis-seeds:
     BUILD +generate-seeds --NETWORK=preview --OUTPUT_FILE=preview-genesis-seeds.json
 
+generate-preprod-keys:
+    BUILD +generate-keys \
+        --DEV=true \
+        --NETWORK=preprod \
+        --NUM_REGISTRATIONS=4 \
+        --NUM_PERMISSIONED=12 \
+        --D_REGISTERED=25 \
+        --D_PERMISSIONED=275 \
+        --NUM_BOOT_NODES=3 \
+        --NUM_VALIDATOR_NODES=12
+
+generate-preprod-genesis-seeds:
+    BUILD +generate-seeds --NETWORK=preprod --OUTPUT_FILE=preprod-genesis-seeds.json
+
 generate-keys:
     # D_PERMISSIONED + D_REGISTERED should be at least as large as slotsPerEpoch
     ARG DEV=false
@@ -170,13 +184,14 @@ rebuild-genesis-state:
     COPY --if-exists res/genesis/genesis_funding_wallets_${NETWORK}.txt funding_wallets.txt
     COPY --if-exists secrets/${NETWORK}-genesis-seeds.json /secrets/genesis-seeds.json
 
+    # wallet-seed-3 is the wallet Lace uses for testing.
     RUN if [ "${NETWORK}" = "undeployed" ]; then \
             mkdir -p /secrets/; \
             echo '{ \
                 "wallet-seed-0": "0000000000000000000000000000000000000000000000000000000000000001", \
                 "wallet-seed-1": "0000000000000000000000000000000000000000000000000000000000000002", \
                 "wallet-seed-2": "0000000000000000000000000000000000000000000000000000000000000003", \
-                "wallet-seed-3": "0000000000000000000000000000000000000000000000000000000000000004" \
+                "wallet-seed-3": "a51c86de32d0791f7cffc3bdff1abd9bb54987f0ed5effc30c936dddbb9afd9d" \
             }' > /secrets/genesis-seeds.json; \
         fi
 
@@ -232,6 +247,7 @@ rebuild-genesis-state:
                 contract-simple maintenance \
                 --rng-seed "$RNG_SEED" \
                 --contract-address $(cat out/contract_address_${NETWORK}.mn) \
+                --new-authority-seed 1000000000000000000000000000000000000000000000000000000000000001 \
             && cp out/contract*.mn /res/test-contract \
         ; fi
 
@@ -366,10 +382,16 @@ rebuild-genesis-state-qanet:
         --NETWORK=qanet \
         --GENERATE_TEST_TXS=false
 
-# rebuild-genesis-state-testnet-02 rebuilds the genesis ledger state for testnet network - this MUST be followed by updating the chainspecs for CI to pass!
+# rebuild-genesis-state-preview rebuilds the genesis ledger state for preview network - this MUST be followed by updating the chainspecs for CI to pass!
 rebuild-genesis-state-preview:
     BUILD +rebuild-genesis-state \
         --NETWORK=preview \
+        --GENERATE_TEST_TXS=false
+
+# rebuild-genesis-state-preprod rebuilds the genesis ledger state for preprod network - this MUST be followed by updating the chainspecs for CI to pass!
+rebuild-genesis-state-preprod:
+    BUILD +rebuild-genesis-state \
+        --NETWORK=preprod \
         --GENERATE_TEST_TXS=false
 
 # rebuild-all-genesis-states rebuilds the genesis ledger state for all networks - this MUST be followed by updating the chainspecs for CI to pass!
@@ -378,6 +400,7 @@ rebuild-all-genesis-states:
     BUILD +rebuild-genesis-state-node-dev-01
     BUILD +rebuild-genesis-state-qanet
     BUILD +rebuild-genesis-state-preview
+    BUILD +rebuild-genesis-state-preprod
 
 # rebuild-chainspec for a given NETWORK
 rebuild-chainspec:
@@ -401,6 +424,7 @@ rebuild-all-chainspecs:
     BUILD +rebuild-chainspec --NETWORK=node-dev-01
     BUILD +rebuild-chainspec --NETWORK=qanet
     BUILD +rebuild-chainspec --NETWORK=preview
+    BUILD +rebuild-chainspec --NETWORK=preprod
 
 # rebuild-genesis Rebuild the initial ledger state genesis and chainspecs. Secrets required to rebuild prod/preprod geneses.
 rebuild-genesis:
@@ -583,6 +607,8 @@ check-rust-prepare:
     CACHE --sharing shared --id cargo-git /usr/local/cargo/git
     CACHE --sharing shared --id cargo-reg /usr/local/cargo/registry
 
+    RUN apt-get update && apt-get install -y jq
+
     # Build dependencies - this is the caching Docker layer!
     RUN SKIP_WASM_BUILD=1 cargo chef cook --clippy --workspace --all-targets  --features runtime-benchmarks --recipe-path /recipe.json
 
@@ -599,8 +625,22 @@ check-rust:
 
     RUN cargo fmt --all -- --check
 
+    ENV SKIP_WASM_BUILD=1
+
+    # --offline used to hard fail if caching broken.
     # ensure runtime benchmark feature enable to check they compile.
-    RUN SKIP_WASM_BUILD=1 cargo clippy --workspace --all-targets --features runtime-benchmarks -- -D warnings
+    RUN cargo clippy --workspace --all-targets --features runtime-benchmarks --offline -- -D warnings
+
+    RUN status=0; \
+        for pkg in $(cargo metadata --no-deps --format-version 1 \
+            | jq -r '.packages[].name'); do \
+            echo "===> Checking $pkg"; \
+            if ! cargo check -p "$pkg"; then \
+            echo "Failed: $pkg"; \
+            status=1; \
+            fi; \
+        done; \
+        exit $status
 
 # check-metadata confirms that metadata in the repo matches a given node image
 check-metadata:
@@ -934,7 +974,7 @@ audit-npm:
     COPY ${DIRECTORY} ${DIRECTORY}
     WORKDIR ${DIRECTORY}
     RUN corepack enable
-    RUN --no-cache npm audit --severity high
+    RUN --no-cache npm audit --audit-level high
 
 audit-yarn:
     ARG DIRECTORY
@@ -1038,10 +1078,6 @@ local-env-e2e:
     FROM +prep
     COPY --keep-ts --dir Cargo.lock Cargo.toml docs .sqlx \
     ledger node pallets primitives metadata res runtime util tests local-environment scripts .
-    RUN sed -i \
-        -e 's|node_url = "ws://127.0.0.1:9933"|node_url = "ws://172.17.0.1:9933"|' \
-        -e 's|ogmios_url = "ws://127.0.0.1:1337"|ogmios_url = "ws://172.17.0.1:1337"|' \
-        tests/e2e/src/cfg/local/config.toml
     WORKDIR tests/e2e
     RUN cargo test --test e2e_tests -- --test-threads=1 --nocapture
 
