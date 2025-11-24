@@ -791,8 +791,7 @@ build-fork:
 
     # Hardfork build
     # NOTE: Rather than doing -p midnight-node-runtime - building the workspace caches better if using chef.
-    #TODO: once https://github.com/midnightntwrk/midnight-node/pull/257 is merged, we can -p midnight-node-runtime
-    RUN HARDFORK_TEST=1 cargo build --workspace --locked --release
+    RUN HARDFORK_TEST=1 cargo build -p midnight-node-runtime --locked --release
     RUN mv /target/release/wbuild/midnight-node-runtime/*.wasm \
         /artifacts-$NATIVEARCH/test
 
@@ -806,8 +805,7 @@ build-undo:
     RUN mkdir -p /artifacts-$NATIVEARCH/test && mkdir -p /artifacts-$NATIVEARCH/rollback
     # RUN rm -Rf /target/release/build/midnight-node-runtime-*
     # Rollback build
-    #TODO: once https://github.com/midnightntwrk/midnight-node/pull/257 is merged, we can -p midnight-node-runtime
-    RUN HARDFORK_TEST_ROLLBACK=1 cargo build --workspace --locked --release
+    RUN HARDFORK_TEST_ROLLBACK=1 cargo build -p midnight-node-runtime --locked --release
     RUN mv /target/release/wbuild/midnight-node-runtime/midnight_node_runtime.compact.compressed.wasm \
         /artifacts-$NATIVEARCH/rollback/midnight_node_runtime_rollback.compact.compressed.wasm
 
