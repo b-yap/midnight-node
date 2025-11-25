@@ -24,7 +24,6 @@ std = []
 runtime-benchmarks = []
 
 [dependencies]
-midnight-serialize.workspace = true
 hex-literal.workspace = true
 midnight-serialize.workspace = true
 serde = { workspace = true, features = ["derive"] }
