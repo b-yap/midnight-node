@@ -24,7 +24,7 @@ std = []
 runtime-benchmarks = []
 
 [dependencies]
-hex.workspace = true
+hex-literal.workspace = true
 midnight-serialize.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true, features = ["alloc"] }
@@ -37,7 +37,6 @@ midnight-primitives-federated-authority-observation = { workspace = true, option
 pallet-cnight-observation = { workspace = true, optional = true }
 
 [dev-dependencies]
-hex-literal.workspace = true
 midnight-serialize.workspace = true
 
 hex.workspace = true
