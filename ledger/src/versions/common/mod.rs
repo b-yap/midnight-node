@@ -54,7 +54,7 @@ use {
 	},
 	midnight_primitives_ledger::{LedgerMetricsExt, LedgerStorageExt},
 	mn_ledger_local::{
-		dust::{DustPublicKey, InitialNonce},
+		dust::InitialNonce,
 		semantics::TransactionContext,
 		structure::{
 			CNightGeneratesDustActionType, CNightGeneratesDustEvent, ClaimKind, ContractAction,
@@ -64,7 +64,7 @@ use {
 	},
 	onchain_runtime_local::cost_model::CostModel,
 	std::time::Instant,
-	transient_crypto_local::{curve::Fr, proofs::Proof as BaseProof},
+	transient_crypto_local::proofs::Proof as BaseProof,
 	zswap_local::Offer,
 };
 
@@ -176,6 +176,7 @@ where
 		state_key: &[u8],
 		tx_serialized: &[u8],
 		block_context: BlockContext,
+		should_skip_failed_segments: bool,
 	) -> Result<TransactionAppliedStateRoot, LedgerApiError> {
 		// Gather metrics for Prometheus
 		let start_tx_processing_time = Instant::now();
@@ -198,10 +199,17 @@ where
 
 		let mut utxos = tx.unshielded_utxos();
 
-		if let TransactionAppliedStage::PartialSuccess(segments) = applied_stage {
-			// Remove from `utxos` the `segments` that failed
-			utxos.remove_failed_segments(&segments);
-		}
+		let failed_segments =
+			if let TransactionAppliedStage::PartialSuccess(segments) = applied_stage {
+				// Remove from `utxos` the `segments` that failed
+				utxos.remove_failed_segments(&segments);
+				Some(segments.keys().copied().collect())
+			} else {
+				None
+			};
+
+		let operations =
+			tx.calls_and_deploys(should_skip_failed_segments.then_some(failed_segments).flatten());
 
 		let (utxo_outputs, utxo_inputs) =
 			utxos.check_utxos_response_integrity(initial_utxos_size, &ledger)?;
@@ -218,7 +226,7 @@ where
 			unshielded_utxos_spent: utxo_inputs,
 		};
 
-		for op in tx.calls_and_deploys() {
+		for op in operations {
 			match op {
 				TransactionOperation::Call { address, .. } => {
 					event.call_addresses.push(api.tagged_serialize(&address)?);
@@ -335,7 +343,7 @@ where
 		let api = api::new();
 		let tx = api.tagged_deserialize::<Transaction<S, D>>(transaction_bytes)?;
 		let hash = tx.hash();
-		let operations = tx.calls_and_deploys().try_fold(Vec::new(), |mut acc, cd| {
+		let operations = tx.calls_and_deploys(None).try_fold(Vec::new(), |mut acc, cd| {
 			let a = match cd {
 				TransactionOperation::Call { address, entry_point } => {
 					Op::Call { address: api.tagged_serialize(&address)?, entry_point }
@@ -630,11 +638,10 @@ where
 		action: u8,
 		nonce: [u8; 32],
 	) -> Result<Vec<u8>, LedgerApiError> {
+		let api = api::new();
 		let event = CNightGeneratesDustEvent {
 			value,
-			owner: DustPublicKey(Fr::from_le_bytes(owner).ok_or(
-				LedgerApiError::Deserialization(api::DeserializationError::DustPublicKey),
-			)?),
+			owner: api.deserialize(owner)?,
 			time: Timestamp::from_secs(time),
 			action: match action {
 				0 => Ok(CNightGeneratesDustActionType::Create),
@@ -645,7 +652,6 @@ where
 			}?,
 			nonce: InitialNonce(HashOutput(nonce)),
 		};
-		let api = api::new();
 		api.tagged_serialize(&event)
 	}
 

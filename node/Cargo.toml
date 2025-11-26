@@ -1,6 +1,6 @@
 [package]
 name = "midnight-node"
-version = "0.18.0"
+version = "0.18.1"
 description = "Midnight blockchain node"
 authors = ["Substrate DevHub <https://github.com/substrate-developer-hub>"]
 homepage = "https://substrate.io/"
@@ -77,6 +77,7 @@ midnight-node-runtime = { workspace = true, default-features = true }
 midnight-node-ledger = { workspace = true, default-features = true }
 midnight-node-ledger-helpers = {workspace = true, default-features = true }
 midnight-node-res = { workspace = true, features = ["chain-spec"], default-features = true }
+midnight-primitives-beefy = { workspace = true, default-features = true }
 midnight-primitives-ledger = { workspace = true, default-features = true }
 midnight-primitives-mainchain-follower = { workspace = true, default-features = true }
 midnight-primitives-federated-authority-observation = { workspace = true, default-features = true }
@@ -85,7 +86,6 @@ pallet-midnight = { workspace = true, default-features = true }
 pallet-midnight-rpc = { workspace = true, default-features = true }
 pallet-cnight-observation = { workspace = true, default-features = true}
 pallet-cnight-observation-mock = { workspace = true, default-features = true}
-mn-ledger.workspace = true
 
 # CLI-specific dependencies
 # try-runtime-cli = { optional = true, workspace = true }
@@ -151,6 +151,3 @@ try-runtime = ["midnight-node-runtime/try-runtime"]
 experimental = [
     #"sp-block-rewards",
 ]
-
-[package.metadata.cargo-shear]
-ignored = ["midnight-ledger"]
