@@ -48,7 +48,6 @@ pub async fn execute(args: SendIntentArgs) -> Result<(), Box<dyn std::error::Err
 	Ok(())
 }
 
-/*
 #[cfg(test)]
 mod test {
 	use crate::{Cli, run_command};
@@ -130,5 +129,3 @@ mod test {
 		assert!(fs::exists(output_file).expect("should_exist"));
 	}
 }
-
-*/
