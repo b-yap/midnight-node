@@ -76,6 +76,7 @@ mod test {
 				"generate-sample-intent",
 				"--src-file",
 				src_files,
+				"--dust-warp",
 				"--dest-dir",
 				&out_dir_str,
 				"deploy",
@@ -97,6 +98,7 @@ mod test {
 			src_url: None,
 			fetch_concurrency: 0,
 			src_files: Some(vec![src_files.to_string()]),
+			dust_warp: true,
 		};
 
 		let destination = Destination {
